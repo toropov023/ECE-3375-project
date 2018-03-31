@@ -25,8 +25,10 @@ PSHBTN EQU $3451
 	ldaa 	  #$0
 	staa 	  countValue
 	
-ReScan:		des	 	   	  ; Create room on the stack for the return value
-		jsr ScanOnce  ; Do one scan of the keypad
+	JSR InitLCD				;Initialize LCD
+	
+ReScan:		des	 	  ; Create room on the stack for the return value
+		jsr ScanOnce      ; Do one scan of the keypad
 		pula		  ; Get the return value
 		cmpa #$FF	  ; Invalid return value
 		beq ReScan
@@ -59,29 +61,29 @@ ReScan:		des	 	   	  ; Create room on the stack for the return value
 										
 ScanOnce:       clrb
 top:            ldx #OutputMasks	; This lookup table contains the
-                ldaa b,x			; single-zero outputs for the
-                staa PORTB			; columns
+                ldaa b,x		; single-zero outputs for the
+                staa PORTB		; columns
 		jsr Delay1MS		; Wait so the output can settle
-                ldaa PORTB			; Read the input
-                lsra 				; Shift right four times.  The rows
-                lsra				; are in the high order bits
+                ldaa PORTB		; Read the input
+                lsra 			; Shift right four times.  The rows
+                lsra			; are in the high order bits
                 lsra
                 lsra
-                anda #$0F			; Input $F means no key pressed
-                cmpa #$0F			; Input anything else means keypressed
+                anda #$0F		; Input $F means no key pressed
+                cmpa #$0F		; Input anything else means keypressed
                 beq next_test		; On $F, move to the next column
                 ldx #ColAddr		; On not-$F, load the current column
-                ldy b,x				; look-up table
-                ldaa a,y			 ; At this point, A contains the solution
+                ldy b,x			; look-up table
+                ldaa a,y		; At this point, A contains the solution
 		tsx
-                staa 2,x  	 	  	; Write the answer to the stack
-		rts	 				; and return
-next_test:      incb				; We need to increment twice so B will 
-                incb				; properly index the row and column tables
-                cmpb #8				; When B reaches 8, we're done
+                staa 2,x  	 	; Write the answer to the stack
+		rts	 		; and return
+next_test:      incb			; We need to increment twice so B will 
+                incb			; properly index the row and column tables
+                cmpb #8			; When B reaches 8, we're done
                 blt top
-                ldaa #$FF			; If B reached 8, return $FF to indicate
-		tsx	 				; no key pressed
+                ldaa #$FF		; If B reached 8, return $FF to indicate
+		tsx	 		; no key pressed
 		staa 2,x
 		rts                
 
@@ -105,8 +107,8 @@ DISPLAY: 	  LDAA	countValue
 				
 				
 
-Delay1MS:  	LDX #!2000 		  ; Modify to change delay
-DelayLoop:	DEX				  ; Time
+Delay1MS:  	LDX #!2000 		; Modify to change delay
+DelayLoop:	DEX			; Time
 		BNE DelayLoop
 		RTS
 			
@@ -119,9 +121,81 @@ Delay:      tsx
             jsr Delay1MS
             bra Delay
 DelayEnd    rts             
-			
-			
-			
+
+;LCD init
+InitLCD:	ldaa #$FF 	; Set port A to output for now
+		staa DDRA
+
+            	ldaa #$1C 	; Set port M bits 4,3,2
+		staa DDRM
+
+		LDAA #$30	; We need to send this command a bunch of times
+		psha
+		LDAA #5
+		psha
+		jsr SendWithDelay
+		pula
+
+		ldaa #1
+		psha
+		jsr SendWithDelay
+		jsr SendWithDelay
+		jsr SendWithDelay
+		pula
+		pula
+
+		ldaa #$08
+		psha
+		ldaa #1
+		psha
+		jsr SendWithDelay
+		pula
+		pula
+
+		ldaa #1
+		psha
+		psha
+		jsr SendWithDelay
+		pula
+		pula
+
+		ldaa #6
+		psha
+		ldaa #1
+		psha
+		jsr SendWithDelay
+		pula
+		pula
+
+		ldaa #$0E
+		psha
+		ldaa #1
+		psha
+		jsr SendWithDelay
+		pula
+		pula
+		
+		rts
+
+SendWithDelay:
+		TSX
+		LDAA 3,x
+		STAA PORTA
+
+		bset PORTM,$10	 ; Turn on bit 4
+		jsr Delay1MS
+		bclr PORTM,$10	 ; Turn off bit 4
+
+		tsx
+		ldaa 2,x
+		psha
+		clra
+		psha
+		jsr Delay
+		pula
+		pula
+		rts
+		
 
 ;Keypad stuff
 ; OK.  Valid values are single zeros, so that's 7, B, D, E.  Others fault                
@@ -135,8 +209,8 @@ ColAddr:        dw  ColOne,ColTwo,ColThree,ColFour
 ; Output mask must be padded, so we can step by 2s through the ColAddr array
 OutputMasks:    db $E,$FF,$D,$Ff,$B,$FF,$7,$FF
 
-countValue:   db   1		  ; Store counter
-lastBtn:	  db   1		  ; Last pressed key
+countValue:   	db   1		  ; Store counter
+lastBtn:	db   1		  ; Last pressed key
 
 
 ;Conversion to compare with decimal for trial with LEDs
