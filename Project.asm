@@ -20,10 +20,9 @@ PSHBTN EQU $3451
 	ldaa 	  #$0F
 	STAA 	  DDRB		  ; Set port B for in[7..4], out[3..0]
 			
-	ldaa 	  #$0
-	staa 	  lastbtn
-	ldaa 	  #$0
-	staa 	  countValue
+	CLRB
+	STAB 	  lastBtn
+	STAB 	  countValue
 	
 	JSR InitLCD				;Initialize LCD
 	
@@ -45,10 +44,10 @@ ReScan:		des	 	  ; Create room on the stack for the return value
 		cba		  ; Are they the same?
 		bne ReScan	  ; If not, do nothing
 
-		
-		;cmpa lastBtn
-		;beq ReScan
-		;staa lastBtn
+		;Check if user is golding the bottom
+		CMPA lastBtn
+		BEQ ReScan	;Ignore if the same button
+		STAA lastBtn
 
 		cmpa #$01	 ; Is button pressed 1?
 		beq COUNT	 ; If yes, branch to count
@@ -93,18 +92,66 @@ RESET: 		  CLRB
 		  BRA 	DONE
 			  
 COUNT: 		  LDAB	countValue
-		  CMPB	#$08	  	   ; Compare if last value is 99($64)/8($08)
+		  ;CMPB	#$08	  	   ; Compare if last value is 99($64)/8($08)
+		  ;^ Don't think that's the way it's done, this should work
+		  CMPB #$!100
 		  BEQ	RESET
 		  INCB
 		  STAB	countValue
 DONE:		  JSR 	DISPLAY
 		  BRA 	ReScan	  
 	   
-DISPLAY: 	  LDAA	countValue
-		  JSR	CONVERSION
-		  STAB	PORTA
+DISPLAY: 	  
+		  ; Might need it if LCD no work
+		  ;LDAA	countValue
+		  ;JSR	CONVERSION
+		  ;STAB	PORTA
+		  
+		  JSR writeToLcd
 		  RTS			
 				
+
+writeToLcd:	;Write countValue to LCD
+		
+		;Init LCD to write
+		BSET PORTM,$14	
+		
+		;Clear LCD
+		LDAA #$01		
+		psha
+		LDAA #$01
+		psha
+		jsr SendWithDelay
+		pula
+		pula
+		
+		;Split into two digits
+		LDX	#!10
+		LDAB	countValue
+		IDIV	;X has the first digit, D has the second
+		PSHB	;Save second digit for later use
+		
+		;Write first digit
+		PSHX
+		PULA
+		PULA
+		ADDA	#$30	;Add 0011 0000 to the digit 
+				; to get the LCD character (refer to LCD manual)
+		STAA	PORTA
+		BCLR	PORTA,$10
+		JSR 	Delay1MS
+		BSET	PORTA,$10
+		
+		;Write second digit
+		PULA	;Now we can get that second digit we saved before
+		ADDA	#$30	;Add 0011 0000 to the digit 
+				; to get the LCD character (refer to LCD manual)
+		STAA	PORTA
+		BCLR	PORTA,$10
+		JSR 	Delay1MS
+		BSET	PORTA,$10
+		
+		RTS
 				
 
 Delay1MS:  	LDX #!2000 		; Modify to change delay
