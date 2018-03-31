@@ -156,6 +156,7 @@ CONVERSION: 	CMPA #!0
 		BEQ CASE8
 		CMPA #!8
 		BEQ CASE9
+		RTS
 
 CASE1: 		LDAB #$00
        		RTS
