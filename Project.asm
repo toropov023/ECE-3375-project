@@ -34,14 +34,16 @@ ReScan:		des	 	   	  ; Create room on the stack for the return value
 		ldy #!50  	  ; 50 ms debounce delay
 		pshy
 		jsr Delay
-		ins		 	  ; Only clean up one byte, since we need RValue
-		jsr ScanOnce  ; Do another scan
+		ins		  ; Only clean up one byte, since we need RValue
+		jsr ScanOnce 	  ; Do another scan
+		
+		;At this point key is in A and B
 		pula		  ; Get the return value
 		pulb		  ; Get the previous return value
-		cba			  ; Are they the same?
+		cba		  ; Are they the same?
 		bne ReScan	  ; If not, do nothing
 
-		;At this point key is in A and B
+		
 		;cmpa lastBtn
 		;beq ReScan
 		;staa lastBtn
