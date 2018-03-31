@@ -25,41 +25,41 @@ PSHBTN EQU $3451
 	ldaa 	  #$0
 	staa 	  countValue
 	
-ReScan:			des	 	   	  ; Create room on the stack for the return value
-				jsr ScanOnce  ; Do one scan of the keypad
-				pula		  ; Get the return value
-				cmpa #$FF	  ; Invalid return value
-				beq ReScan
-				psha	  	  ; Store the current return value
-				ldy #!50  	  ; 50 ms debounce delay
-				pshy
-				jsr Delay
-				ins		 	  ; Only clean up one byte, since we need RValue
-				jsr ScanOnce  ; Do another scan
-				pula		  ; Get the return value
-				pulb		  ; Get the previous return value
-				cba			  ; Are they the same?
-				bne ReScan	  ; If not, do nothing
-								
-				;At this point key is in A and B
-				;cmpa lastBtn
-				;beq ReScan
-				;staa lastBtn
-				
-				cmpa #$01	 ; Is button pressed 1?
-				beq COUNT	 ; If yes, branch to count
-				
-				cmpa #$02	 ; If not, is it 2?
-				beq RESET	 ; If yes, branch to reset
-				
-				bra ReScan	 ; Otherwise, branch to ReScan
+ReScan:		des	 	   	  ; Create room on the stack for the return value
+		jsr ScanOnce  ; Do one scan of the keypad
+		pula		  ; Get the return value
+		cmpa #$FF	  ; Invalid return value
+		beq ReScan
+		psha	  	  ; Store the current return value
+		ldy #!50  	  ; 50 ms debounce delay
+		pshy
+		jsr Delay
+		ins		 	  ; Only clean up one byte, since we need RValue
+		jsr ScanOnce  ; Do another scan
+		pula		  ; Get the return value
+		pulb		  ; Get the previous return value
+		cba			  ; Are they the same?
+		bne ReScan	  ; If not, do nothing
+
+		;At this point key is in A and B
+		;cmpa lastBtn
+		;beq ReScan
+		;staa lastBtn
+
+		cmpa #$01	 ; Is button pressed 1?
+		beq COUNT	 ; If yes, branch to count
+
+		cmpa #$02	 ; If not, is it 2?
+		beq RESET	 ; If yes, branch to reset
+
+		bra ReScan	 ; Otherwise, branch to ReScan
 				
 										
 ScanOnce:       clrb
 top:            ldx #OutputMasks	; This lookup table contains the
                 ldaa b,x			; single-zero outputs for the
                 staa PORTB			; columns
-				jsr Delay1MS		; Wait so the output can settle
+		jsr Delay1MS		; Wait so the output can settle
                 ldaa PORTB			; Read the input
                 lsra 				; Shift right four times.  The rows
                 lsra				; are in the high order bits
@@ -71,42 +71,42 @@ top:            ldx #OutputMasks	; This lookup table contains the
                 ldx #ColAddr		; On not-$F, load the current column
                 ldy b,x				; look-up table
                 ldaa a,y			 ; At this point, A contains the solution
-				tsx
+		tsx
                 staa 2,x  	 	  	; Write the answer to the stack
-				rts	 				; and return
+		rts	 				; and return
 next_test:      incb				; We need to increment twice so B will 
                 incb				; properly index the row and column tables
                 cmpb #8				; When B reaches 8, we're done
                 blt top
                 ldaa #$FF			; If B reached 8, return $FF to indicate
-				tsx	 				; no key pressed
-				staa 2,x
-				rts                
+		tsx	 				; no key pressed
+		staa 2,x
+		rts                
 
 				
 RESET: 		  CLRB
-			  STAB	countValue
-			  BRA 	DONE
+		  STAB	countValue
+		  BRA 	DONE
 			  
 COUNT: 		  LDAB	countValue
-			  CMPB	#$08	  	   ; Compare if last value is 99($64)/8($08)
-			  BEQ	RESET
-			  INCB
-			  STAB	countValue
+		  CMPB	#$08	  	   ; Compare if last value is 99($64)/8($08)
+		  BEQ	RESET
+		  INCB
+		  STAB	countValue
 DONE:		  JSR 	DISPLAY
-			  BRA 	ReScan	  
+		  BRA 	ReScan	  
 	   
 DISPLAY: 	  LDAA	countValue
-			  JSR	CONVERSION
-			  STAB	PORTA
-	   		  RTS			
+		  JSR	CONVERSION
+		  STAB	PORTA
+		  RTS			
 				
 				
 
 Delay1MS:  	LDX #!2000 		  ; Modify to change delay
 DelayLoop:	DEX				  ; Time
-			BNE DelayLoop
-			RTS
+		BNE DelayLoop
+		RTS
 			
 ; 50ms debounce delay				
 Delay:      tsx
@@ -139,39 +139,39 @@ lastBtn:	  db   1		  ; Last pressed key
 
 ;Conversion to compare with decimal for trial with LEDs
 CONVERSION: 	CMPA #!0
-				BEQ CASE1
-				CMPA #!1
-				BEQ CASE2
-				CMPA #!2
-				BEQ CASE3
-				CMPA #!3
-				BEQ CASE4
-				CMPA #!4
-				BEQ CASE5
-				CMPA #!5
-				BEQ CASE6
-				CMPA #!6
-				BEQ CASE7
-				CMPA #!7
-				BEQ CASE8
-				CMPA #!8
-				BEQ CASE9
+		BEQ CASE1
+		CMPA #!1
+		BEQ CASE2
+		CMPA #!2
+		BEQ CASE3
+		CMPA #!3
+		BEQ CASE4
+		CMPA #!4
+		BEQ CASE5
+		CMPA #!5
+		BEQ CASE6
+		CMPA #!6
+		BEQ CASE7
+		CMPA #!7
+		BEQ CASE8
+		CMPA #!8
+		BEQ CASE9
 
 CASE1: 		LDAB #$00
        		RTS
 CASE2: 		LDAB #$01
-	   		RTS
+		RTS
 CASE3: 		LDAB #$03
-	   		RTS
+		RTS
 CASE4: 		LDAB #$07
-	   		RTS
+		RTS
 CASE5: 		LDAB #$0F
-	   		RTS
+		RTS
 CASE6: 		LDAB #$1F
-	   		RTS
+		RTS
 CASE7: 		LDAB #$3F
-	   		RTS
+		RTS
 CASE8: 		LDAB #$7F
-	   		RTS 	
+		RTS 	
 CASE9: 		LDAB #$FF
-	   		RTS
+		RTS
