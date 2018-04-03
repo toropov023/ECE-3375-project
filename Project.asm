@@ -8,6 +8,8 @@ PORTM EQU $0250
 DDRM  EQU $0252
 PSHBTN EQU $3451
 ;**************
+VALUE       EQU $6000
+LAST_VALUE  EQU $6001
 
 ; Include .hc12 directive, in case you need MUL
 .hc12
@@ -17,16 +19,16 @@ PSHBTN EQU $3451
 	
 	LDAA 	  #$FF		  ; Initialize DDRA so PORTA is all outputs
 	STAA 	  DDRA	
-	ldaa 	  #$0F
+	ldaa 	  #$0F		  ;0F
 	STAA 	  DDRB		  ; Set port B for in[7..4], out[3..0]
-			
-	CLRB
-	STAB 	  lastBtn
-	STAB 	  countValue
 	
 	JSR InitLCD				;Initialize LCD
 	
-ReScan:		des	 	  ; Create room on the stack for the return value
+	des
+	CLRB
+	STAB 0,SP
+	
+ReScan:	des	 	  ; Create room on the stack for the return value
 		jsr ScanOnce      ; Do one scan of the keypad
 		pula		  ; Get the return value
 		cmpa #$FF	  ; Invalid return value
@@ -45,9 +47,9 @@ ReScan:		des	 	  ; Create room on the stack for the return value
 		bne ReScan	  ; If not, do nothing
 
 		;Check if user is golding the bottom
-		CMPA lastBtn
-		BEQ ReScan	;Ignore if the same button
-		STAA lastBtn
+		;CMPA lastBtn
+		;BEQ ReScan	;Ignore if the same button
+		;STAA lastBtn
 
 		cmpa #$01	 ; Is button pressed 1?
 		beq COUNT	 ; If yes, branch to count
@@ -87,47 +89,42 @@ next_test:      incb			; We need to increment twice so B will
 		rts                
 
 				
-RESET: 		  CLRB
-		  STAB	countValue
+RESET: 	  PULB
+		  CLRB
+		  PSHB
 		  BRA 	DONE
 			  
-COUNT: 		  LDAB	countValue
-		  ;CMPB	#$08	  	   ; Compare if last value is 99($64)/8($08)
-		  ;^ Don't think that's the way it's done, this should work
-		  CMPB #$!100
-		  BEQ	RESET
-		  INCB
-		  STAB	countValue
-DONE:		  JSR 	DISPLAY
-		  BRA 	ReScan	  
-	   
-DISPLAY: 	  
-		  ; Might need it if LCD no work
-		  ;LDAA	countValue
-		  ;JSR	CONVERSION
-		  ;STAB	PORTA
+COUNT: 	  LDAB  0,SP
+		  CMPB	#$64	  	   ; Compare if last value is 99($64)/8($08)  
 		  
-		  JSR writeToLcd
-		  RTS			
+		  BEQ	RESET
+		  INC	0,SP
+		  
+DONE:	  JSR 	writeToLcd
+		  BRA 	ReScan
 				
 
-writeToLcd:	;Write countValue to LCD
+writeToLcd:	;Write countValue to LCD.		
+		LDAA #$01
+		STAA PORTA
+		LDAA #$10
+		STAA PORTM
+		BCLR PORTM,$10
+		JSR  Delay1MS
+		BSET PORTM,$10
 		
+		
+		JSR DelayL
+		
+				
 		;Init LCD to write
 		BSET PORTM,$14	
 		
-		;Clear LCD
-		LDAA #$01		
-		psha
-		LDAA #$01
-		psha
-		jsr SendWithDelay
-		pula
-		pula
 		
 		;Split into two digits
-		LDX	#!10
-		LDAB	countValue
+		LDX	    #!10
+		CLRA
+		LDAB 	$3FFF
 		IDIV	;X has the first digit, D has the second
 		PSHB	;Save second digit for later use
 		
@@ -136,30 +133,35 @@ writeToLcd:	;Write countValue to LCD
 		PULA
 		PULA
 		ADDA	#$30	;Add 0011 0000 to the digit 
-				; to get the LCD character (refer to LCD manual)
+						; to get the LCD character (refer to LCD manual)
 		STAA	PORTA
-		BCLR	PORTA,$10
+		BCLR	PORTM,$10
 		JSR 	Delay1MS
-		BSET	PORTA,$10
+		BSET	PORTM,$10
 		
 		;Write second digit
 		PULA	;Now we can get that second digit we saved before
 		ADDA	#$30	;Add 0011 0000 to the digit 
 				; to get the LCD character (refer to LCD manual)
 		STAA	PORTA
-		BCLR	PORTA,$10
+		BCLR	PORTM,$10
 		JSR 	Delay1MS
-		BSET	PORTA,$10
+		BSET	PORTM,$10
 		
 		RTS
 				
+
+DelayL:		LDY	#!100
+DELAY2		JSR	Delay1MS
+			DEY
+			BNE DELAY2
+			RTS
 
 Delay1MS:  	LDX #!2000 		; Modify to change delay
 DelayLoop:	DEX			; Time
 		BNE DelayLoop
 		RTS
-			
-; 50ms debounce delay				
+		
 Delay:      tsx
             ldy 2,x		 ; The decrement can't be done in place.
             dey	   		 ; DEC 2,X is a one byte operation
@@ -170,10 +172,12 @@ Delay:      tsx
 DelayEnd    rts             
 
 ;LCD init
-InitLCD:	ldaa #$FF 	; Set port A to output for now
+InitLCD:	
+		ldaa #$FF 	; Set port A to output for now
 		staa DDRA
 
-            	ldaa #$1C 	; Set port M bits 4,3,2
+		;ldaa #%00011000
+        ldaa #$1C 	; Set port M bits 4,3,2
 		staa DDRM
 
 		LDAA #$30	; We need to send this command a bunch of times
@@ -255,47 +259,3 @@ ColAddr:        dw  ColOne,ColTwo,ColThree,ColFour
 
 ; Output mask must be padded, so we can step by 2s through the ColAddr array
 OutputMasks:    db $E,$FF,$D,$Ff,$B,$FF,$7,$FF
-
-countValue:   	db   1		  ; Store counter
-lastBtn:	db   1		  ; Last pressed key
-
-
-;Conversion to compare with decimal for trial with LEDs
-CONVERSION: 	CMPA #!0
-		BEQ CASE1
-		CMPA #!1
-		BEQ CASE2
-		CMPA #!2
-		BEQ CASE3
-		CMPA #!3
-		BEQ CASE4
-		CMPA #!4
-		BEQ CASE5
-		CMPA #!5
-		BEQ CASE6
-		CMPA #!6
-		BEQ CASE7
-		CMPA #!7
-		BEQ CASE8
-		CMPA #!8
-		BEQ CASE9
-		RTS
-
-CASE1: 		LDAB #$00
-       		RTS
-CASE2: 		LDAB #$01
-		RTS
-CASE3: 		LDAB #$03
-		RTS
-CASE4: 		LDAB #$07
-		RTS
-CASE5: 		LDAB #$0F
-		RTS
-CASE6: 		LDAB #$1F
-		RTS
-CASE7: 		LDAB #$3F
-		RTS
-CASE8: 		LDAB #$7F
-		RTS 	
-CASE9: 		LDAB #$FF
-		RTS
