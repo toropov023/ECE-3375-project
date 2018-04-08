@@ -8,27 +8,28 @@ PORTM EQU $0250
 DDRM  EQU $0252
 PSHBTN EQU $3451
 ;**************
+
 VALUE       EQU $6000
-LAST_VALUE  EQU $6001
+LASTVALUE   EQU $6001
 
 ; Include .hc12 directive, in case you need MUL
 .hc12
 
-	org $400
-	LDS	#$4000
+	org       $400
+	LDS	  #$4000
 	
 	LDAA 	  #$FF		  ; Initialize DDRA so PORTA is all outputs
 	STAA 	  DDRA	
-	ldaa 	  #$0F		  ;0F
+	ldaa 	  #$0F
 	STAA 	  DDRB		  ; Set port B for in[7..4], out[3..0]
 	
-	JSR InitLCD				;Initialize LCD
+	JSR       InitLCD	  ;Initialize LCD
 	
-	des
 	CLRB
-	STAB 0,SP
+	STAB 	  VALUE
+	STAB 	  LASTVALUE
 	
-ReScan:	des	 	  ; Create room on the stack for the return value
+ReScan:		des	 	  ; Create room on the stack for the return value
 		jsr ScanOnce      ; Do one scan of the keypad
 		pula		  ; Get the return value
 		cmpa #$FF	  ; Invalid return value
@@ -46,10 +47,10 @@ ReScan:	des	 	  ; Create room on the stack for the return value
 		cba		  ; Are they the same?
 		bne ReScan	  ; If not, do nothing
 
-		;Check if user is golding the bottom
-		;CMPA lastBtn
-		;BEQ ReScan	;Ignore if the same button
-		;STAA lastBtn
+		;Check if user is holding the bottom
+		CMPA LASTVALUE
+		BEQ  ReScan	;Ignore if the same button
+		STAA LASTVALUE
 
 		cmpa #$01	 ; Is button pressed 1?
 		beq COUNT	 ; If yes, branch to count
@@ -89,19 +90,18 @@ next_test:      incb			; We need to increment twice so B will
 		rts                
 
 				
-RESET: 	  PULB
-		  CLRB
-		  PSHB
-		  BRA 	DONE
+RESET: 	  	CLRB
+	  	STAB	VALUE
+	  	BRA 	DONE
 			  
-COUNT: 	  LDAB  0,SP
-		  CMPB	#$64	  	   ; Compare if last value is 99($64)/8($08)  
+COUNT: 	  	LDAB  	VALUE
+		CMPB	#$64	  	   ; Compare if last value is 99($64)/8($08)  
 		  
-		  BEQ	RESET
-		  INC	0,SP
+		BEQ	RESET
+		INC	VALUE
 		  
-DONE:	  JSR 	writeToLcd
-		  BRA 	ReScan
+DONE:	  	JSR 	writeToLcd
+		BRA 	ReScan
 				
 
 writeToLcd:	;Write countValue to LCD.		
@@ -113,18 +113,15 @@ writeToLcd:	;Write countValue to LCD.
 		JSR  Delay1MS
 		BSET PORTM,$10
 		
-		
-		JSR DelayL
-		
+		JSR DelayL		
 				
 		;Init LCD to write
 		BSET PORTM,$14	
-		
-		
+				
 		;Split into two digits
-		LDX	    #!10
+		LDX	#!10
 		CLRA
-		LDAB 	$3FFF
+		LDAB 	VALUE
 		IDIV	;X has the first digit, D has the second
 		PSHB	;Save second digit for later use
 		
@@ -133,7 +130,7 @@ writeToLcd:	;Write countValue to LCD.
 		PULA
 		PULA
 		ADDA	#$30	;Add 0011 0000 to the digit 
-						; to get the LCD character (refer to LCD manual)
+				; to get the LCD character (refer to LCD manual)
 		STAA	PORTA
 		BCLR	PORTM,$10
 		JSR 	Delay1MS
@@ -247,8 +244,6 @@ SendWithDelay:
 		pula
 		rts
 		
-
-;Keypad stuff
 ; OK.  Valid values are single zeros, so that's 7, B, D, E.  Others fault                
 ColOne:         db  $FF,$FF,$FF,$FF,$FF,$FF,$FF,$0A,$FF,$FF,$FF,$07,$FF,$04,$01,$FF
 ColTwo:         db  $FF,$FF,$FF,$FF,$FF,$FF,$FF,$00,$FF,$FF,$FF,$08,$FF,$05,$02,$FF
