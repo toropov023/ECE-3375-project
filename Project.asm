@@ -8,8 +8,6 @@ PORTM EQU $0250
 DDRM  EQU $0252
 PSHBTN EQU $3451
 ;**************
-VALUE       EQU $6000
-LAST_VALUE  EQU $6001
 
 ; Include .hc12 directive, in case you need MUL
 .hc12
@@ -95,7 +93,7 @@ RESET: 	  PULB
 		  BRA 	DONE
 			  
 COUNT: 	  LDAB  0,SP
-		  CMPB	#$64	  	   ; Compare if last value is 99($64)/8($08)  
+		  CMPB	#$64	  	   ; Compare if last value is 99($64) 
 		  
 		  BEQ	RESET
 		  INC	0,SP
@@ -113,10 +111,8 @@ writeToLcd:	;Write countValue to LCD.
 		JSR  Delay1MS
 		BSET PORTM,$10
 		
-		
 		JSR DelayL
-		
-				
+						
 		;Init LCD to write
 		BSET PORTM,$14	
 		
@@ -125,24 +121,24 @@ writeToLcd:	;Write countValue to LCD.
 		LDX	    #!10
 		CLRA
 		LDAB 	$3FFF
-		IDIV	;X has the first digit, D has the second
-		PSHB	;Save second digit for later use
+		IDIV		 		  ;X has the first digit, D has the second
+		PSHB				  ;Save second digit for later use
 		
 		;Write first digit
 		PSHX
 		PULA
 		PULA
-		ADDA	#$30	;Add 0011 0000 to the digit 
-						; to get the LCD character (refer to LCD manual)
+		ADDA	#$30	  	  ;Add 0011 0000 to the digit 
+						 	  ; to get the LCD character (refer to LCD manual)
 		STAA	PORTA
 		BCLR	PORTM,$10
 		JSR 	Delay1MS
 		BSET	PORTM,$10
 		
 		;Write second digit
-		PULA	;Now we can get that second digit we saved before
-		ADDA	#$30	;Add 0011 0000 to the digit 
-				; to get the LCD character (refer to LCD manual)
+		PULA		  	   ;Now we can get that second digit we saved before
+		ADDA	#$30	   ;Add 0011 0000 to the digit 
+						   ; to get the LCD character (refer to LCD manual)
 		STAA	PORTA
 		BCLR	PORTM,$10
 		JSR 	Delay1MS
@@ -157,8 +153,8 @@ DELAY2		JSR	Delay1MS
 			BNE DELAY2
 			RTS
 
-Delay1MS:  	LDX #!2000 		; Modify to change delay
-DelayLoop:	DEX			; Time
+Delay1MS:  	LDX #!2000
+DelayLoop:	DEX
 		BNE DelayLoop
 		RTS
 		
@@ -175,8 +171,7 @@ DelayEnd    rts
 InitLCD:	
 		ldaa #$FF 	; Set port A to output for now
 		staa DDRA
-
-		;ldaa #%00011000
+		
         ldaa #$1C 	; Set port M bits 4,3,2
 		staa DDRM
 
