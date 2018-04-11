@@ -44,19 +44,13 @@ ReScan:	des	 	  ; Create room on the stack for the return value
 		cba		  ; Are they the same?
 		bne ReScan	  ; If not, do nothing
 
-		;Check if user is golding the bottom
-		;CMPA lastBtn
-		;BEQ ReScan	;Ignore if the same button
-		;STAA lastBtn
-
 		cmpa #$01	 ; Is button pressed 1?
 		beq COUNT	 ; If yes, branch to count
 
 		cmpa #$02	 ; If not, is it 2?
 		beq RESET	 ; If yes, branch to reset
 
-		bra ReScan	 ; Otherwise, branch to ReScan
-				
+		bra ReScan	 ; Otherwise, branch to ReScan	
 										
 ScanOnce:       clrb
 top:            ldx #OutputMasks	; This lookup table contains the
